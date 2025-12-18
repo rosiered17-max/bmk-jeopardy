@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>BMK MSP Service Manager Jeopardy (Clickable Board)</title>
+  <style>
+    :root{
+      --bg:#0b1020; --accent:#f7d26a; --text:#e8ecff; --muted:#aab3d6; --border:#22305e;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background: radial-gradient(1200px 800px at 15% 10%, #1a2a66 0%, transparent 55%),
+                  radial-gradient(1200px 800px at 85% 20%, #4a2a66 0%, transparent 60%),
+                  var(--bg);
+      color:var(--text);
+      min-height:100vh;
+      display:flex;
+      flex-direction:column;
+    }
+    header{padding:18px 18px 10px; display:flex; align-items:flex-start; justify-content:space-between; gap:12px;}
+    .title-wrap{display:flex; flex-direction:column; gap:6px}
+    h1{font-size:18px; margin:0; letter-spacing:.2px; font-weight:780;}
+    .sub{font-size:13px; color:var(--muted); margin:0; line-height:1.35;}
+    .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:flex-end;}
+    button{
+      border:1px solid var(--border);
+      background: linear-gradient(180deg, #16224a 0%, #101a36 100%);
+      color:var(--text);
+      padding:9px 11px;
+      border-radius:10px;
+      cursor:pointer;
+      font-weight:700;
+      font-size:13px;
+      box-shadow: 0 6px 16px rgba(0,0,0,.25);
+      transition: transform .08s ease, filter .08s ease;
+    }
+    button:hover{filter:brightness(1.08)}
+    button:active{transform: translateY(1px)}
+    button.secondary{background: linear-gradient(180deg, #131c3b 0%, #0f1730 100%); color:var(--muted); font-weight:700;}
+    button.danger{background: linear-gradient(180deg, #4b1f2a 0%, #35121a 100%); border-color:#6b2a38;}
+    main{padding: 8px 18px 20px; display:flex; gap:14px; align-items:stretch; flex:1;}
+    .board-wrap{flex: 1 1 auto; min-width: 720px;}
+    .board{
+      display:grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap:10px;
+      background: rgba(17,26,51,.45);
+      padding:12px;
+      border-radius:16px;
+      border: 1px solid rgba(34,48,94,.7);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(6px);
+    }
+    .cat{
+      background: linear-gradient(180deg, rgba(22,34,74,.9) 0%, rgba(15,23,48,.9) 100%);
+      border:1px solid rgba(34,48,94,.85);
+      border-radius:14px;
+      padding:12px 10px;
+      text-align:center;
+      font-weight:850;
+      font-size:13px;
+      letter-spacing:.3px;
+      text-transform:uppercase;
+      line-height:1.1;
+      min-height:64px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .cell{
+      position:relative;
+      background: linear-gradient(180deg, rgba(17,26,51,.95) 0%, rgba(14,21,45,.95) 100%);
+      border:1px solid rgba(34,48,94,.9);
+      border-radius:14px;
+      min-height:72px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      user-select:none;
+      box-shadow: 0 8px 18px rgba(0,0,0,.22);
+      transition: transform .08s ease, filter .08s ease;
+    }
+    .cell:hover{filter:brightness(1.08)}
+    .cell:active{transform: translateY(1px)}
+    .value{font-size:26px; font-weight:950; color: var(--accent); text-shadow: 0 6px 18px rgba(0,0,0,.45);}
+    .used{
+      background: linear-gradient(180deg, rgba(22,28,56,.8) 0%, rgba(11,16,32,.85) 100%);
+      border-color: rgba(34,48,94,.5);
+      cursor:not-allowed;
+      filter:saturate(.65) brightness(.9);
+    }
+    .used .value{color:#9aa4cc; text-decoration: line-through; opacity:.8;}
+    .used::after{content:"USED"; position:absolute; bottom:8px; right:10px; font-size:11px; font-weight:900; color:#94a0d0; opacity:.6; letter-spacing:.5px;}
+    .side{width: 360px; flex: 0 0 360px; display:flex; flex-direction:column; gap:12px;}
+    .card{background: rgba(17,26,51,.55); border:1px solid rgba(34,48,94,.7); border-radius:16px; padding:12px; box-shadow: var(--shadow); backdrop-filter: blur(6px);}
+    .card h2{margin:0 0 10px; font-size:14px; text-transform:uppercase; letter-spacing:.45px;}
+    .hint{margin:0; color:var(--muted); font-size:13px; line-height:1.35;}
+    .score-row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0; border-top:1px solid rgba(34,48,94,.55);}
+    .score-row:first-of-type{border-top:none; padding-top:0}
+    .team{display:flex; flex-direction:column; gap:2px;}
+    .team b{font-size:14px}
+    .team span{font-size:12px; color:var(--muted)}
+    .score{font-variant-numeric: tabular-nums; font-weight:950; font-size:18px;}
+    .score-actions{display:flex; gap:6px; align-items:center;}
+    .score-actions button{padding:6px 9px; border-radius:10px; font-size:13px; font-weight:950; min-width:38px;}
+    .tiny{font-size:12px; color:var(--muted); margin-top:8px; line-height:1.35;}
+    .modal{position:fixed; inset:0; background: rgba(0,0,0,.62); display:none; align-items:center; justify-content:center; padding:18px; z-index:50;}
+    .modal.open{display:flex}
+    .modal-card{width:min(940px, 100%); background: linear-gradient(180deg, rgba(22,34,74,.98) 0%, rgba(12,18,38,.98) 100%); border: 1px solid rgba(34,48,94,.9); border-radius:18px; padding:16px; box-shadow: 0 30px 80px rgba(0,0,0,.55); position:relative;}
+    .modal-top{display:flex; justify-content:space-between; gap:12px; align-items:flex-start; margin-bottom:10px;}
+    .meta .tag{display:inline-flex; width:fit-content; gap:8px; align-items:center; padding:6px 10px; border-radius:999px; border:1px solid rgba(34,48,94,.9); background: rgba(17,26,51,.55); color:var(--muted); font-size:12px; font-weight:850; letter-spacing:.4px; text-transform:uppercase;}
+    .meta .tag b{color: var(--accent); font-weight:950;}
+    .qa{background: rgba(17,26,51,.5); border:1px solid rgba(34,48,94,.7); border-radius:14px; padding:14px;}
+    .qa .label{font-size:12px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); font-weight:900; margin:0 0 6px;}
+    .qa .text{margin:0; font-size:18px; line-height:1.4; font-weight:780;}
+    .answer{margin-top:12px; display:none;}
+    .answer.show{display:block}
+    .modal-actions{margin-top:14px; display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;}
+    .kbd{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size:12px; color: var(--muted);}
+    .jsonbox{width:100%; min-height:220px; border-radius:14px; border:1px solid rgba(34,48,94,.8); background: rgba(10,14,28,.7); color: var(--text); padding:12px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size:12px; line-height:1.35; display:none; margin-top:10px;}
+    .jsonbox.show{display:block}
+    .toast{position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background: rgba(17,26,51,.85); border:1px solid rgba(34,48,94,.75); padding:10px 12px; border-radius:999px; color:var(--muted); font-size:13px; box-shadow: var(--shadow); display:none; z-index:60; backdrop-filter: blur(6px);}
+    .toast.show{display:block}
+    @media (max-width: 1120px){ main{flex-direction:column} .board-wrap{min-width:0} .side{width:auto; flex: 0 0 auto} }
+  </style>
+</head>
+<body>
+<header>
+  <div class="title-wrap">
+    <h1>MSP Service Manager Jeopardy — BMK Standards (Clickable Board)</h1>
+    <p class="sub">Click a tile to open the clue. Show the answer, then mark it USED. (Tip: reset if you edited an older version.)</p>
+  </div>
+  <div class="controls">
+    <button id="btnFullscreen" class="secondary" title="Toggle full screen (F)">Full screen</button>
+    <button id="btnEdit" class="secondary" title="Edit questions (E)">Edit</button>
+    <button id="btnReset" class="danger" title="Reset board + scores (R)">Reset</button>
+  </div>
+</header>
+
+<main>
+  <section class="board-wrap">
+    <div id="board" class="board" aria-label="Jeopardy Board"></div>
+  </section>
+
+  <aside class="side">
+    <div class="card">
+      <h2>Quick Controls</h2>
+      <p class="hint">
+        • Click a tile to open the clue<br/>
+        • <span class="kbd">A</span> = show/hide answer<br/>
+        • <span class="kbd">U</span> = mark tile used<br/>
+        • <span class="kbd">Esc</span> = close popup<br/>
+        • <span class="kbd">R</span> = reset<br/>
+      </p>
+      <p class="tiny">Share your screen in Teams and run full screen for the best “game show” vibe.</p>
+    </div>
+
+    <div class="card">
+      <h2>Scoreboard</h2>
+      <div id="scores"></div>
+      <p class="tiny">Use + / − to add/subtract the <b>currently open</b> value.</p>
+    </div>
+
+    <div class="card">
+      <h2>BMK Flavor</h2>
+      <p class="hint">Dispatch discipline, profitability, agreements, KPIs, standards, and leadership.</p>
+    </div>
+  </aside>
+</main>
+
+<div id="modal" class="modal" role="dialog" aria-modal="true" aria-hidden="true">
+  <div class="modal-card">
+    <div class="modal-top">
+      <div class="meta"><div class="tag" id="modalTag"></div></div>
+      <button id="btnClose" class="secondary" title="Close (Esc)">Close</button>
+    </div>
+
+    <div class="qa">
+      <p class="label">Question</p>
+      <p class="text" id="qText"></p>
+
+      <div class="answer" id="answerBlock">
+        <p class="label">Answer</p>
+        <p class="text" id="aText"></p>
+      </div>
+    </div>
+
+    <textarea id="jsonbox" class="jsonbox" spellcheck="false"></textarea>
+
+    <div class="modal-actions">
+      <button id="btnToggleAnswer" class="secondary" title="Show/Hide answer (A)">Show answer</button>
+      <button id="btnMarkUsed" title="Mark this tile used (U)">Mark used</button>
+    </div>
+
+    <p class="tiny" style="margin-top:10px;color:var(--muted)">
+      Keyboard: <span class="kbd">A</span> answer • <span class="kbd">U</span> used • <span class="kbd">Esc</span> close
+    </p>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const DEFAULT_DATA = {
+  title: "BMK MSP Service Manager Jeopardy",
+  teams: [
+    { name: "Team 1", score: 0 },
+    { name: "Team 2", score: 0 },
+    { name: "Team 3", score: 0 },
+    { name: "Team 4", score: 0 }
+  ],
+  categories: [
+    { name: "Dispatch & Triage", clues: [
+      { value: 100, question: "BMK priority setting starts with what single factor?", answer: "Business impact — who/what is affected and how severe it is." },
+      { value: 200, question: "What two pieces of information must be understood before a ticket can be correctly prioritized and dispatched?", answer: "Business impact and clear symptoms/scope of the issue." },
+      { value: 300, question: "When there is a delay between assignment and work starting, what is the service manager’s immediate responsibility?", answer: "Reset customer expectations with a proactive update and re-evaluate priority/coverage or reassignment if needed." },
+      { value: 400, question: "Why is having a clear definition of done important for ticket closure?", answer: "Consistency and reduced rework: verify resolution, capture notes/time/billing, and prevent reopenings." },
+      { value: 500, question: "When the same type of ticket keeps coming in, what is the service manager responsible for beyond closing the ticket?", answer: "Identify the pattern, address the underlying cause through standards/process changes, and reduce future ticket volume." }
+    ]},
+    { name: "Service Profitability", clues: [
+      { value: 100, question: "In BMK terms, SS:SR stands for what?", answer: "Service Salary to Service Revenue ratio." },
+      { value: 200, question: "If Service Revenue is $200,000 and Service Salaries are $70,000, what is SS:SR?", answer: "35% (70,000 ÷ 200,000)." },
+      { value: 300, question: "Why can utilization look good while profitability is poor?", answer: "Low effective rates, excessive rework, poor agreement pricing, or high labor cost per hour." },
+      { value: 400, question: "Which is more dangerous to margin: low billable hours or high rework — and why?", answer: "High rework, because it consumes capacity without generating revenue and increases SLA/churn risk." },
+      { value: 500, question: "A client agreement is busy but not profitable. Name two levers a service manager can influence now.", answer: "Reduce rework, improve dispatch matching, strengthen documentation, eliminate recurring issues, tighten scope expectations, reduce context switching." }
+    ]},
+    { name: "Agreement Hygiene", clues: [
+      { value: 100, question: "What’s the fastest way to destroy agreement gross profit?", answer: "Unlimited scope without standards and without controlling ticket drivers." },
+      { value: 200, question: "Name two common scope traps that should be clarified in an agreement.", answer: "After-hours, project work vs included, vendor coordination, onsite travel, end-user training, onboarding/offboarding, adds/moves/changes." },
+      { value: 300, question: "Why do agreement true-ups exist?", answer: "To realign recurring price with reality: user/device counts, added services, inflation, and changed support demand." },
+      { value: 400, question: "What operational data should you bring to an agreement pricing conversation?", answer: "Tickets per user/device, labor hours consumed, top drivers, after-hours volume, recurring issues, and trend over time." },
+      { value: 500, question: "When a client resists an agreement true-up, how should you frame the conversation to focus on outcomes instead of price?", answer: "Tie it to outcomes like reduced risk, predictable support, improved stability, and sustainable delivery capacity." }
+    ]},
+    { name: "KPIs & Cadence", clues: [
+      { value: 100, question: "Name one leading indicator that your service desk is about to miss SLAs.", answer: "Aging backlog, rising reopened tickets, unassigned work, or inbound volume spikes." },
+      { value: 200, question: "What does ticket aging tell you that raw ticket count does not?", answer: "How long work sits and where prioritization breaks down (risk + customer perception)." },
+      { value: 300, question: "What problems does a daily service huddle prevent when run correctly?", answer: "Missed priorities, hidden blockers, coverage gaps, and reactive firefighting." },
+      { value: 400, question: "Why is time entry hygiene a service manager problem (not just accounting’s)?", answer: "It drives billing accuracy, profitability visibility, agreement analysis, and capacity planning." },
+      { value: 500, question: "Why can a service desk look successful on paper while customers and technicians still feel overwhelmed?", answer: "Because speed-based metrics can hide rework, recurring issues, backlog growth, and poor prioritization." }
+    ]},
+    { name: "Standards", clues: [
+      { value: 100, question: "Standardization mainly reduces which two pains in service delivery?", answer: "Rework and inconsistency/variability." },
+      { value: 200, question: "Name two standards areas that most directly reduce tickets per endpoint.", answer: "Patch/vulnerability management, baseline hardening, MFA, EDR, backup/restore testing, standardized toolset, automation." },
+      { value: 300, question: "What’s the best operational reason to document onboarding/offboarding?", answer: "Speed + accuracy: fewer mistakes, better security, and consistent billing/asset updates." },
+      { value: 400, question: "How do you help a client improve their environment without overwhelming them with too many changes at once?", answer: "Prioritize one improvement at a time based on impact, sequence changes, and set owners/dates." },
+      { value: 500, question: "When a client asks for headcount relief, what operational result are they really asking for?", answer: "Fewer tickets and interruptions (less reactive work) through stronger standards and automation." }
+    ]},
+    { name: "Leadership & Culture", clues: [
+      { value: 100, question: "What’s the #1 purpose of an escalation framework?", answer: "Clear ownership and fast decisions so the customer gets predictable outcomes." },
+      { value: 200, question: "What should come out of an effective post-incident review if it was done correctly?", answer: "Clear improvements with assigned owners and follow-up actions—not blame." },
+      { value: 300, question: "How do you coach a tech who is fast but creates rework?", answer: "Define closure checklist, implement QA/peer review for risk work, improve documentation, coach verification and communication." },
+      { value: 400, question: "A client is upset. What’s the strongest communication move in the first 60 seconds?", answer: "Acknowledge impact, state immediate next step, set next update time, and confirm ownership." },
+      { value: 500, question: "How do you keep a team from burning out while still improving KPIs?", answer: "Reduce noise, fix recurring drivers, protect focus blocks, improve dispatch matching, and set sustainable WIP limits." }
+    ]}
+  ]
+};
+
+const STORAGE_KEY = "bmkServiceManagerJeopardy_v2"; // new key so older versions don't override
+
+let state = { data:null, used:null, open:null, answerShown:false, editMode:false, currentValue:0 };
+
+const $board = document.getElementById("board");
+const $modal = document.getElementById("modal");
+const $modalTag = document.getElementById("modalTag");
+const $qText = document.getElementById("qText");
+const $aText = document.getElementById("aText");
+const $answerBlock = document.getElementById("answerBlock");
+const $jsonbox = document.getElementById("jsonbox");
+const $toast = document.getElementById("toast");
+const $btnClose = document.getElementById("btnClose");
+const $btnToggleAnswer = document.getElementById("btnToggleAnswer");
+const $btnMarkUsed = document.getElementById("btnMarkUsed");
+const $btnReset = document.getElementById("btnReset");
+const $btnFullscreen = document.getElementById("btnFullscreen");
+const $btnEdit = document.getElementById("btnEdit");
+const $scores = document.getElementById("scores");
+
+function deepClone(obj){ return JSON.parse(JSON.stringify(obj)); }
+function ensureUsedMatrix(data){
+  const used = [];
+  for (let c=0; c<data.categories.length; c++){
+    used[c] = [];
+    for (let r=0; r<data.categories[c].clues.length; r++){
+      used[c][r] = false;
+    }
+  }
+  return used;
+}
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !parsed.data || !parsed.used) return null;
+    return parsed;
+  }catch(e){ return null; }
+}
+function saveState(){
+  const payload = { data: state.data, used: state.used };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+}
+function toast(msg){
+  $toast.textContent = msg;
+  $toast.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=> $toast.classList.remove("show"), 1700);
+}
+function formatMoney(v){ return "$" + String(v); }
+
+function renderBoard(){
+  $board.innerHTML = "";
+  const cats = state.data.categories;
+
+  for (let c=0; c<cats.length; c++){
+    const el = document.createElement("div");
+    el.className = "cat";
+    el.textContent = cats[c].name;
+    $board.appendChild(el);
+  }
+
+  const rows = Math.max(...cats.map(c=>c.clues.length));
+  for (let r=0; r<rows; r++){
+    for (let c=0; c<cats.length; c++){
+      const clue = cats[c].clues[r];
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      cell.setAttribute("role","button");
+      cell.setAttribute("tabindex","0");
+
+      const v = document.createElement("div");
+      v.className = "value";
+      v.textContent = clue ? formatMoney(clue.value) : "";
+      cell.appendChild(v);
+
+      const isUsed = clue ? state.used[c][r] : true;
+      if (isUsed) cell.classList.add("used");
+
+      cell.addEventListener("click", ()=> onCellActivate(c, r));
+      cell.addEventListener("keydown", (e)=>{
+        if (e.key === "Enter" || e.key === " "){ e.preventDefault(); onCellActivate(c, r); }
+      });
+
+      $board.appendChild(cell);
+    }
+  }
+}
+
+function renderScores(){
+  $scores.innerHTML = "";
+  const teams = state.data.teams || [];
+  teams.forEach((t, idx)=>{
+    const row = document.createElement("div");
+    row.className = "score-row";
+
+    const left = document.createElement("div");
+    left.className = "team";
+    const b = document.createElement("b");
+    b.textContent = t.name || `Team ${idx+1}`;
+    const s = document.createElement("span");
+    s.textContent = "Score";
+    left.appendChild(b); left.appendChild(s);
+
+    const score = document.createElement("div");
+    score.className = "score";
+    score.textContent = (t.score ?? 0);
+
+    const actions = document.createElement("div");
+    actions.className = "score-actions";
+    const plus = document.createElement("button");
+    plus.textContent = "+";
+    plus.title = "Add current question value";
+    plus.addEventListener("click", ()=> adjustScore(idx, +state.currentValue));
+    const minus = document.createElement("button");
+    minus.textContent = "−";
+    minus.title = "Subtract current question value";
+    minus.className = "secondary";
+    minus.addEventListener("click", ()=> adjustScore(idx, -state.currentValue));
+    actions.appendChild(plus);
+    actions.appendChild(minus);
+
+    row.appendChild(left);
+    row.appendChild(score);
+    row.appendChild(actions);
+    $scores.appendChild(row);
+  });
+}
+
+function adjustScore(teamIdx, delta){
+  if (!delta){ toast("Open a question first."); return; }
+  const teams = state.data.teams || [];
+  teams[teamIdx].score = (teams[teamIdx].score ?? 0) + delta;
+  saveState();
+  renderScores();
+}
+
+function openModal(){ $modal.classList.add("open"); $modal.setAttribute("aria-hidden","false"); }
+function closeModal(){
+  $modal.classList.remove("open");
+  $modal.setAttribute("aria-hidden","true");
+  state.open = null; state.answerShown = false; state.currentValue = 0;
+  $answerBlock.classList.remove("show");
+  $btnToggleAnswer.textContent = "Show answer";
+}
+
+function onCellActivate(c, r){
+  const clue = state.data.categories[c].clues[r];
+  if (!clue) return;
+  if (state.used[c][r]) return;
+
+  state.open = { c, r };
+  state.answerShown = false;
+  state.currentValue = clue.value || 0;
+
+  $modalTag.innerHTML = `${state.data.categories[c].name} • <b>${formatMoney(clue.value)}</b>`;
+  $qText.textContent = clue.question;
+  $aText.textContent = clue.answer;
+  $answerBlock.classList.remove("show");
+  $btnToggleAnswer.textContent = "Show answer";
+
+  $jsonbox.classList.remove("show");
+  state.editMode = false;
+
+  openModal();
+}
+
+function toggleAnswer(){
+  if (!state.open) return;
+  state.answerShown = !state.answerShown;
+  if (state.answerShown){ $answerBlock.classList.add("show"); $btnToggleAnswer.textContent = "Hide answer"; }
+  else { $answerBlock.classList.remove("show"); $btnToggleAnswer.textContent = "Show answer"; }
+}
+
+function markUsed(){
+  if (!state.open) return;
+  const {c, r} = state.open;
+  state.used[c][r] = true;
+  saveState();
+  renderBoard();
+  toast("Marked USED");
+  closeModal();
+}
+
+function resetAll(){
+  if (!confirm("Reset board and scores?")) return;
+  localStorage.removeItem(STORAGE_KEY);
+  init(true);
+  toast("Reset complete");
+}
+
+function toggleFullscreen(){
+  if (!document.fullscreenElement){ document.documentElement.requestFullscreen?.(); }
+  else { document.exitFullscreen?.(); }
+}
+
+function toggleEdit(){
+  state.editMode = !state.editMode;
+  if (state.editMode){
+    if (!$modal.classList.contains("open")){
+      openModal();
+      $modalTag.innerHTML = `Edit • <b>JSON</b>`;
+      $qText.textContent = "Paste updated JSON and click Close (Esc) to apply.";
+      $aText.textContent = "";
+    }
+    $answerBlock.classList.remove("show");
+    $btnToggleAnswer.textContent = "Show answer";
+    $jsonbox.classList.add("show");
+    $jsonbox.value = JSON.stringify(state.data, null, 2);
+    $jsonbox.focus();
+    toast("Edit mode: paste JSON");
+  } else {
+    try{
+      const parsed = JSON.parse($jsonbox.value);
+      if (!parsed.categories || !Array.isArray(parsed.categories)) throw new Error("JSON missing categories[]");
+      state.data = parsed;
+      state.used = ensureUsedMatrix(state.data);
+      saveState();
+      renderBoard();
+      renderScores();
+      toast("Applied changes");
+      closeModal();
+    }catch(e){
+      alert("Could not apply JSON: " + e.message);
+      state.editMode = true;
+    }
+  }
+}
+
+document.addEventListener("keydown", (e)=>{
+  if (e.key === "Escape" && $modal.classList.contains("open")){
+    if (state.editMode) toggleEdit(); else closeModal();
+  }
+  if (e.key.toLowerCase() === "a" && $modal.classList.contains("open") && !state.editMode) toggleAnswer();
+  if (e.key.toLowerCase() === "u" && $modal.classList.contains("open") && !state.editMode) markUsed();
+  if (e.key.toLowerCase() === "r") resetAll();
+  if (e.key.toLowerCase() === "f") toggleFullscreen();
+  if (e.key.toLowerCase() === "e") toggleEdit();
+});
+
+$btnClose.addEventListener("click", ()=>{ if (state.editMode) toggleEdit(); else closeModal(); });
+$btnToggleAnswer.addEventListener("click", toggleAnswer);
+$btnMarkUsed.addEventListener("click", markUsed);
+$btnReset.addEventListener("click", resetAll);
+$btnFullscreen.addEventListener("click", toggleFullscreen);
+$btnEdit.addEventListener("click", toggleEdit);
+
+$modal.addEventListener("click", (e)=>{
+  if (e.target === $modal){
+    if (state.editMode) toggleEdit(); else closeModal();
+  }
+});
+
+function init(forceDefault=false){
+  const loaded = forceDefault ? null : loadState();
+  if (loaded){ state.data = loaded.data; state.used = loaded.used; }
+  else { state.data = deepClone(DEFAULT_DATA); state.used = ensureUsedMatrix(state.data); saveState(); }
+  state.currentValue = 0;
+  renderBoard();
+  renderScores();
+}
+init(false);
+</script>
+</body>
+</html>
